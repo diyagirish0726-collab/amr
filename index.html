@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Track 04 — AMR Warehouse Logistics</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+    body {
+      background: #070b12;
+      color: #f1f5f9;
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+    #left {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 12px;
+      gap: 10px;
+      min-width: 0;
+    }
+    #banner {
+      background: linear-gradient(90deg, #0f2342, #132c52);
+      border: 1px solid #2563eb;
+      color: #e0f2fe;
+      padding: 10px 14px;
+      border-radius: 9px;
+      font-size: 13px;
+      font-weight: 700;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+    #banner span.sub {
+      font-size: 11px;
+      font-weight: 500;
+      color: #7dd3fc;
+      white-space: nowrap;
+    }
+    canvas {
+      background: #0b1220;
+      border: 1px solid #1e293b;
+      border-radius: 10px;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    #right {
+      width: 350px;
+      background: #0e1524;
+      border-left: 1px solid #1e293b;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      overflow-y: auto;
+    }
+    .box {
+      background: #131d31;
+      border: 1px solid #1f2d47;
+      border-radius: 9px;
+      padding: 10px;
+    }
+    .box h3 {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #94a3b8;
+      margin-bottom: 8px;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      text-align: center;
+    }
+    .stat {
+      background: #0c1322;
+      border: 1px solid #1e2d47;
+      padding: 8px 4px;
+      border-radius: 7px;
+    }
+    .stat b { display: block; font-size: 18px; color: #34d399; }
+    .stat small { font-size: 10px; color: #cbd5e1; }
+    .btns {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 6px;
+    }
+    button {
+      background: #1a2742;
+      color: #f8fafc;
+      border: 1px solid #2e4168;
+      padding: 8px 10px;
+      border-radius: 7px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: left;
+    }
+    button:hover { background: #24365b; border-color: #4b69a4; }
+    .b-green { border-color: #10b981; color: #6ee7b7; }
+    .b-amber { border-color: #f59e0b; color: #fcd34d; }
+    .b-red { border-color: #ef4444; color: #fca5a5; }
+    .b-cyan { border-color: #38bdf8; color: #7dd3fc; }
+    .robot-row {
+      background: #0c1322;
+      border: 1px solid #1e2d47;
+      border-radius: 7px;
+      padding: 7px 9px;
+      margin-bottom: 6px;
+      font-size: 12px;
+    }
+    .robot-row:last-child { margin-bottom: 0; }
+    .r-top { display: flex; justify-content: space-between; font-weight: 700; }
+    .r-sub { color: #cbd5e1; font-size: 11px; margin-top: 3px; }
+    .pill {
+      display: inline-block;
+      padding: 1px 6px;
+      border-radius: 4px;
+      background: #1e293b;
+      color: #fbbf24;
+      font-weight: 700;
+      font-size: 10px;
+    }
+    #log {
+      font-size: 11px;
+      color: #94a3b8;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      max-height: 140px;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+  <div id="left">
+    <div id="banner">
+      <div id="status-text">Warehouse Fleet Ready — Full-floor navigation, randomized section pickups</div>
+      <span class="sub">Track 04 · AMR Control</span>
+    </div>
+    <canvas id="c" width="920" height="560"></canvas>
+  </div>
+
+  <div id="right">
+    <div class="box">
+      <h3>Fleet KPIs</h3>
+      <div class="stats">
+        <div class="stat"><b id="s-done">0</b><small>Delivered</small></div>
+        <div class="stat"><b id="s-reroute">0</b><small>A* Reroutes</small></div>
+        <div class="stat"><b id="s-deadlock">0</b><small>Deadlocks Fixed</small></div>
+      </div>
+    </div>
+
+    <div class="box">
+      <h3>Demo Controls</h3>
+      <div class="btns">
+        <button class="b-green" onclick="spawnRandomObjectOrder('URGENT')">1. Spawn Random Object in Section → Deliver to DROP-BAY</button>
+        <button class="b-amber" onclick="spawnObstacleInFront()">2. Drop Obstacle Ahead of Robot (Watch Detour)</button>
+        <button class="b-red" onclick="triggerLowBattery()">3. Force Low Battery (Send to CHG-BAY)</button>
+        <button onclick="triggerDeadlock()">4. Trigger Deadlock (Auto-Yield Recovery)</button>
+        <button class="b-cyan" onclick="spawnRandomObjectOrder('NORMAL')">+ Spawn Another Random Object</button>
+      </div>
+    </div>
+
+    <div class="box">
+      <h3>Robot Status</h3>
+      <div id="robots"></div>
+    </div>
+
+    <div class="box">
+      <h3>Live Events</h3>
+      <div id="log"></div>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('c');
+    const ctx = canvas.getContext('2d');
+
+    const COLS = 23;
+    const ROWS = 14;
+    const T = 40;
+    canvas.width = COLS * T;
+    canvas.height = ROWS * T;
+
+    const map = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        if (r === 0 || r === ROWS - 1 || c === 0 || c === COLS - 1) map[r][c] = 1;
+      }
+    }
+
+    const rackBlocks = [
+      [3, 5, 2, 4], [7, 9, 2, 4],
+      [13, 15, 2, 4],
+      [3, 5, 8, 10], [7, 9, 8, 10],
+      [13, 15, 8, 10]
+    ];
+    rackBlocks.forEach(([c1, c2, r1, r2]) => {
+      for (let r = r1; r <= r2; r++)
+        for (let c = c1; c <= c2; c++)
+          map[r][c] = 1;
+    });
+
+    const DROP_BAY = { x: 20, y: 11, label: 'DROP-BAY', delivered: 0 };
+    const CHG_BAY  = { x: 20, y: 2,  label: 'CHG-BAY' };
+
+    const SECTIONS = [
+      { name: 'SEC-A', x: 2, y: 1 },
+      { name: 'SEC-B', x: 12, y: 1 },
+      { name: 'SEC-C', x: 2, y: 7 },
+      { name: 'SEC-D', x: 12, y: 7 }
+    ];
+
+    const SECTION_SPOTS = {
+      'SEC-A': [{ x: 2, y: 3 }, { x: 6, y: 3 }, { x: 10, y: 3 }],
+      'SEC-B': [{ x: 12, y: 3 }, { x: 16, y: 3 }, { x: 18, y: 5 }],
+      'SEC-C': [{ x: 2, y: 11 }, { x: 6, y: 11 }, { x: 10, y: 11 }],
+      'SEC-D': [{ x: 12, y: 11 }, { x: 16, y: 11 }, { x: 18, y: 9 }]
+    };
+
+    let objects = [];
+    let queue = [];
+    let objCounter = 1;
+    let stats = { done: 0, reroute: 0, deadlock: 0 };
+    let pulseTick = 0;
+
+    function setBanner(msg) {
+      document.getElementById('status-text').textContent = msg;
+      const log = document.getElementById('log');
+      const div = document.createElement('div');
+      div.textContent = '• ' + msg;
+      log.prepend(div);
+      if (log.children.length > 16) log.removeChild(log.lastChild);
+    }
+
+    function isObsAt(x, y) {
+      return obstacles.some(o => o.x === x && o.y === y);
+    }
+
+    function isBotAt(x, y, exceptId = null) {
+      return robots.some(o => o.id !== exceptId && o.x === x && o.y === y);
+    }
+
+    function astar(start, goal, blocked = new Set()) {
+      const key = (x, y) => `${x},${y}`;
+      const open = [{
+        x: start.x, y: start.y, g: 0,
+        f: Math.abs(goal.x - start.x) + Math.abs(goal.y - start.y),
+        p: [start]
+      }];
+      const seen = new Set();
+      const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+
+      while (open.length) {
+        let bestIdx = 0;
+        for (let i = 1; i < open.length; i++) {
+          if (open[i].f < open[bestIdx].f) bestIdx = i;
+        }
+        const cur = open.splice(bestIdx, 1)[0];
+        const k = key(cur.x, cur.y);
+        if (seen.has(k)) continue;
+        seen.add(k);
+
+        if (cur.x === goal.x && cur.y === goal.y) return cur.p;
+
+        for (const [dx, dy] of dirs) {
+          const nx = cur.x + dx, ny = cur.y + dy;
+          if (nx < 0 || nx >= COLS || ny < 0 || ny >= ROWS) continue;
+          if (map[ny][nx] === 1) continue;
+          const nk = key(nx, ny);
+          if (seen.has(nk)) continue;
+          if (blocked.has(nk)) continue;
+          const g = cur.g + 1;
+          open.push({
+            x: nx, y: ny, g,
+            f: g + Math.abs(goal.x - nx) + Math.abs(goal.y - ny),
+            p: cur.p.concat([{ x: nx, y: ny }])
+          });
+        }
+      }
+      return null;
+    }
+
+    const obstacles = [];
+
+    const robots = [
+      { id: 'R1', name: 'AMR-01', color: '#38bdf8', x: 1,  y: 6,  bat: 95, state: 'IDLE', obj: null, path: [], wait: 0, avoidFlash: 0, avoidedObs: null },
+      { id: 'R2', name: 'AMR-02', color: '#f472b6', x: 11, y: 6,  bat: 85, state: 'IDLE', obj: null, path: [], wait: 0, avoidFlash: 0, avoidedObs: null },
+      { id: 'R3', name: 'AMR-03', color: '#c084fc', x: 17, y: 12, bat: 75, state: 'IDLE', obj: null, path: [], wait: 0, avoidFlash: 0, avoidedObs: null }
+    ];
+
+    function spawnRandomObjectOrder(prio = 'NORMAL') {
+      const secNames = Object.keys(SECTION_SPOTS);
+      const sec = secNames[Math.floor(Math.random() * secNames.length)];
+      const candidates = SECTION_SPOTS[sec].filter(
+        spot => !objects.some(o => !o.picked && o.x === spot.x && o.y === spot.y)
+      );
+      const spot = candidates.length
+        ? candidates[Math.floor(Math.random() * candidates.length)]
+        : SECTION_SPOTS[sec][0];
+
+      const obj = {
+        id: 'OBJ-' + (objCounter++),
+        sec,
+        x: spot.x,
+        y: spot.y,
+        picked: false,
+        prio
+      };
+      objects.push(obj);
+      queue.push(obj);
+      queue.sort((a, b) => (a.prio === 'URGENT' ? -1 : 1));
+      setBanner(`New ${prio} order: ${obj.id} in ${sec} (${spot.x},${spot.y}) → bring to DROP-BAY`);
+      renderUI();
+    }
+
+    function spawnObstacleInFront() {
+      const active = robots.find(r => r.path && r.path.length > 2 && r.state !== 'CHARGING') || robots[0];
+      const targetStep = active.path && active.path.length > 2 ? active.path[1] : { x: Math.min(COLS - 3, active.x + 1), y: active.y };
+      const onZone =
+        (targetStep.x === DROP_BAY.x && targetStep.y === DROP_BAY.y) ||
+        (targetStep.x === CHG_BAY.x && targetStep.y === CHG_BAY.y);
+      const ox = onZone ? Math.max(1, targetStep.x - 2) : targetStep.x;
+      const oy = targetStep.y;
+
+      if (map[oy]?.[ox] === 0 && !isBotAt(ox, oy) && !isObsAt(ox, oy)) {
+        obstacles.push({ x: ox, y: oy, dx: 0, dy: 0, life: 40 });
+        setBanner(`OBS dropped at (${ox},${oy}) ahead of ${active.name} — watch side-lane detour`);
+      }
+    }
+
+    function triggerLowBattery() {
+      const r = robots[0];
+      r.bat = 15;
+      r.state = 'GOING_TO_CHARGE';
+      r.obj = null;
+      r.path = astar({ x: r.x, y: r.y }, CHG_BAY) || [];
+      setBanner(`${r.name} battery at 15% → heading to fixed CHG-BAY`);
+      renderUI();
+    }
+
+    function triggerDeadlock() {
+      robots[0].x = 10; robots[0].y = 6; robots[0].state = 'CARRYING';
+      robots[0].path = astar({ x: 10, y: 6 }, DROP_BAY) || [];
+
+      robots[1].x = 12; robots[1].y = 6; robots[1].state = 'GOING_TO_OBJ';
+      robots[1].path = astar({ x: 12, y: 6 }, { x: 2, y: 11 }) || [];
+
+      obstacles.push({ x: 11, y: 6, dx: 0, dy: 0, life: 30 });
+      setBanner(`Deadlock test: AMR-01 & AMR-02 facing each other → yield recovery`);
+      renderUI();
+    }
+
+    spawnRandomObjectOrder('URGENT');
+    spawnRandomObjectOrder('NORMAL');
+    spawnRandomObjectOrder('NORMAL');
+
+    function stepLogic() {
+      pulseTick++;
+
+      for (let i = obstacles.length - 1; i >= 0; i--) {
+        const o = obstacles[i];
+        o.life--;
+        if (o.life <= 0) { obstacles.splice(i, 1); continue; }
+      }
+
+      for (const r of robots) {
+        if (r.avoidFlash > 0) r.avoidFlash--;
+        if (r.state === 'IDLE' && queue.length > 0) {
+          if (r.bat < 25) {
+            r.state = 'GOING_TO_CHARGE';
+            r.path = astar({ x: r.x, y: r.y }, CHG_BAY) || [];
+            continue;
+          }
+          let bestIdx = 0;
+          let bestCost = Infinity;
+          for (let i = 0; i < queue.length; i++) {
+            const q = queue[i];
+            const dist = Math.abs(r.x - q.x) + Math.abs(r.y - q.y);
+            const cost = dist + (q.prio === 'URGENT' ? -10 : 0);
+            if (cost < bestCost) {
+              bestCost = cost;
+              bestIdx = i;
+            }
+          }
+          const targetObj = queue.splice(bestIdx, 1)[0];
+          r.obj = targetObj;
+          r.state = 'GOING_TO_OBJ';
+          r.path = astar({ x: r.x, y: r.y }, { x: targetObj.x, y: targetObj.y }) || [];
+          setBanner(`${r.name} assigned ${targetObj.id} in ${targetObj.sec} → driving to pick up`);
+        }
+      }
+
+      for (const r of robots) {
+        if (r.state === 'CHARGING') {
+          r.bat = Math.min(100, r.bat + 4);
+          if (r.bat >= 90) {
+            r.state = 'IDLE';
+            setBanner(`${r.name} charged to ${r.bat}% → ready for next object`);
+          }
+          continue;
+        }
+
+        if (!r.path || r.path.length <= 1) {
+          if (r.state === 'GOING_TO_OBJ' && r.obj) {
+            r.state = 'CARRYING';
+            r.obj.picked = true;
+            r.path = astar({ x: r.x, y: r.y }, DROP_BAY) || [];
+            setBanner(`${r.name} picked up ${r.obj.id} from ${r.obj.sec} → bringing to DROP-BAY`);
+          } else if (r.state === 'CARRYING') {
+            stats.done++;
+            DROP_BAY.delivered++;
+            const finishedName = r.obj ? r.obj.id : 'OBJECT';
+            r.obj = null;
+            r.state = 'IDLE';
+            setBanner(`${r.name} dropped ${finishedName} at DROP-BAY! (Total: ${stats.done})`);
+            if (queue.length < 3) spawnRandomObjectOrder(Math.random() < 0.35 ? 'URGENT' : 'NORMAL');
+          } else if (r.state === 'GOING_TO_CHARGE') {
+            r.state = 'CHARGING';
+            setBanner(`${r.name} docked at CHG-BAY`);
+          }
+          continue;
+        }
+
+        let next = r.path[1];
+        const hitObs = obstacles.find(o => o.x === next.x && o.y === next.y);
+        const hitBot = isBotAt(next.x, next.y, r.id);
+
+        if (hitObs) {
+          const blocked = new Set(obstacles.map(o => `${o.x},${o.y}`));
+          const goal = r.path[r.path.length - 1];
+          let np = astar({ x: r.x, y: r.y }, goal, blocked);
+
+          // If full A* blocked, explicitly step sideways into a perpendicular open aisle cell
+          if (!np || np.length <= 1) {
+            const dx = next.x - r.x;
+            const dy = next.y - r.y;
+            const sideDirs = dx !== 0 ? [[0, -1], [0, 1]] : [[-1, 0], [1, 0]];
+            for (const [sdx, sdy] of sideDirs) {
+              const sx = r.x + sdx, sy = r.y + sdy;
+              if (map[sy]?.[sx] === 0 && !isObsAt(sx, sy) && !isBotAt(sx, sy, r.id)) {
+                const tail = astar({ x: sx, y: sy }, goal, blocked) || [{ x: sx, y: sy }, goal];
+                np = [{ x: r.x, y: r.y }, ...tail];
+                break;
+              }
+            }
+          }
+
+          if (np && np.length > 1 && !isObsAt(np[1].x, np[1].y)) {
+            r.path = np;
+            next = r.path[1];
+            stats.reroute++;
+            r.avoidFlash = 6;
+            r.avoidedObs = { x: hitObs.x, y: hitObs.y };
+            setBanner(`${r.name} stepped sideways to detour around OBS at (${hitObs.x},${hitObs.y})`);
+          } else {
+            continue;
+          }
+        }
+
+        // Strict safety guard: never step onto an obstacle cell
+        if (isObsAt(next.x, next.y)) {
+          continue;
+        }
+
+        if (hitBot) {
+          r.wait++;
+          if (r.wait >= 3) {
+            for (const [dx, dy] of [[0,1],[0,-1],[1,0],[-1,0]]) {
+              const rx = r.x + dx, ry = r.y + dy;
+              if (map[ry]?.[rx] === 0 && !isBotAt(rx, ry, r.id) && !isObsAt(rx, ry)) {
+                r.x = rx; r.y = ry; r.wait = 0;
+                stats.deadlock++;
+                const goal = r.path[r.path.length - 1];
+                r.path = astar({ x: r.x, y: r.y }, goal, new Set(obstacles.map(o => `${o.x},${o.y}`))) || [];
+                setBanner(`Deadlock fixed: ${r.name} yielded aisle cell`);
+                break;
+              }
+            }
+          }
+          continue;
+        }
+
+        r.x = next.x;
+        r.y = next.y;
+        r.path.shift();
+        r.wait = 0;
+        if (Math.random() < 0.2) r.bat = Math.max(5, r.bat - 1);
+      }
+
+      renderUI();
+    }
+
+    function drawBoxItem(cx, cy, size = 12, fill = '#f59e0b', border = '#78350f') {
+      ctx.save();
+      ctx.fillStyle = fill;
+      ctx.strokeStyle = border;
+      ctx.lineWidth = 1.5;
+      ctx.fillRect(cx - size / 2, cy - size / 2, size, size);
+      ctx.strokeRect(cx - size / 2, cy - size / 2, size, size);
+      ctx.restore();
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          const x = c * T, y = r * T;
+          ctx.strokeStyle = '#131f36';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(x, y, T, T);
+
+          if (map[r][c] === 1) {
+            const border = r === 0 || r === ROWS - 1 || c === 0 || c === COLS - 1;
+            ctx.fillStyle = border ? '#152036' : '#1d355e';
+            ctx.fillRect(x + 2, y + 2, T - 4, T - 4);
+            if (!border) {
+              ctx.fillStyle = '#2a4b85';
+              ctx.fillRect(x + 3, y + 3, T - 6, 5);
+            }
+          }
+        }
+      }
+
+      SECTIONS.forEach(s => {
+        ctx.fillStyle = 'rgba(148, 163, 184, 0.55)';
+        ctx.font = 'bold 10px sans-serif';
+        ctx.fillText(s.name, s.x * T + 4, s.y * T + 12);
+      });
+
+      ctx.fillStyle = 'rgba(234, 179, 8, 0.22)';
+      ctx.fillRect(CHG_BAY.x * T + 2, CHG_BAY.y * T + 2, T - 4, T - 4);
+      ctx.strokeStyle = '#eab308';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(CHG_BAY.x * T + 2, CHG_BAY.y * T + 2, T - 4, T - 4);
+      ctx.fillStyle = '#fde047';
+      ctx.font = 'bold 8px sans-serif';
+      ctx.fillText('CHG', CHG_BAY.x * T + 11, CHG_BAY.y * T + 23);
+
+      ctx.fillStyle = 'rgba(168, 85, 247, 0.24)';
+      ctx.fillRect(DROP_BAY.x * T + 2, DROP_BAY.y * T + 2, T - 4, T - 4);
+      ctx.strokeStyle = '#c084fc';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(DROP_BAY.x * T + 2, DROP_BAY.y * T + 2, T - 4, T - 4);
+      ctx.fillStyle = '#f3e8ff';
+      ctx.font = 'bold 8px sans-serif';
+      ctx.fillText('DROP', DROP_BAY.x * T + 9, DROP_BAY.y * T + 23);
+
+      for (let i = 0; i < Math.min(DROP_BAY.delivered, 5); i++) {
+        drawBoxItem((DROP_BAY.x - 1) * T + T / 2, DROP_BAY.y * T + T - 10 - i * 8, 11, '#34d399', '#065f46');
+      }
+
+      objects.forEach(o => {
+        if (o.picked) return;
+        const cx = o.x * T + T / 2, cy = o.y * T + T / 2;
+        drawBoxItem(cx, cy, 14, '#f59e0b', '#78350f');
+        ctx.fillStyle = '#fef3c7';
+        ctx.font = 'bold 8px sans-serif';
+        ctx.fillText(o.id, cx - 12, cy - 10);
+      });
+
+      for (const r of robots) {
+        if (!r.path || r.path.length < 2) continue;
+        ctx.save();
+        ctx.strokeStyle = r.avoidFlash > 0 ? '#fbbf24' : r.color;
+        ctx.setLineDash(r.avoidFlash > 0 ? [] : [5, 4]);
+        ctx.lineWidth = r.avoidFlash > 0 ? 3 : 2;
+        ctx.beginPath();
+        r.path.forEach((p, i) => {
+          const px = p.x * T + T / 2, py = p.y * T + T / 2;
+          if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+        });
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      for (const o of obstacles) {
+        const cx = o.x * T + T / 2, cy = o.y * T + T / 2;
+        ctx.fillStyle = '#ef4444';
+        ctx.beginPath();
+        ctx.arc(cx, cy, T * 0.36, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 9px sans-serif';
+        ctx.fillText('OBS', cx - 10, cy + 3);
+      }
+
+      for (const r of robots) {
+        const cx = r.x * T + T / 2, cy = r.y * T + T / 2;
+
+        if (r.avoidFlash > 0 && r.avoidedObs) {
+          ctx.save();
+          ctx.strokeStyle = '#fbbf24';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(cx, cy);
+          ctx.lineTo(r.avoidedObs.x * T + T / 2, r.avoidedObs.y * T + T / 2);
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        ctx.strokeStyle = r.avoidFlash > 0 ? 'rgba(251, 191, 36, 0.7)' : 'rgba(52, 211, 153, 0.35)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(cx, cy, T * 1.05, 0, Math.PI * 2);
+        ctx.stroke();
+
+        if (r.state === 'CARRYING') {
+          ctx.strokeStyle = '#34d399';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(cx, cy, T * 0.45, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+
+        ctx.fillStyle = r.color;
+        ctx.beginPath();
+        ctx.arc(cx, cy, T * 0.35, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#070b12';
+        ctx.font = 'bold 11px sans-serif';
+        ctx.fillText(r.id, cx - 8, cy + 4);
+
+        if (r.state === 'CARRYING') {
+          drawBoxItem(cx, cy - T * 0.34, 12, '#fbbf24', '#78350f');
+        }
+
+        let tag = r.state;
+        if (r.avoidFlash > 0) tag = 'DETOUR';
+        else if (r.state === 'GOING_TO_OBJ' && r.obj) tag = `GET ${r.obj.id}`;
+        else if (r.state === 'CARRYING' && r.obj) tag = `SAFE LOAD ${r.obj.id}`;
+
+        ctx.fillStyle = r.avoidFlash > 0 ? '#fbbf24' : '#f8fafc';
+        ctx.font = 'bold 8px sans-serif';
+        ctx.fillText(tag, cx - 22, cy - T * 0.46);
+      }
+    }
+
+    function renderUI() {
+      document.getElementById('s-done').textContent = stats.done;
+      document.getElementById('s-reroute').textContent = stats.reroute;
+      document.getElementById('s-deadlock').textContent = stats.deadlock;
+
+      document.getElementById('robots').innerHTML = robots.map(r => {
+        let mission = 'Idle';
+        if (r.avoidFlash > 0) mission = 'Side-lane detour around OBS';
+        else if (r.state === 'GOING_TO_OBJ' && r.obj) mission = `Going to ${r.obj.sec} for ${r.obj.id}`;
+        else if (r.state === 'CARRYING' && r.obj) mission = `Safe transport ${r.obj.id} → DROP-BAY`;
+        else if (r.state === 'GOING_TO_CHARGE' || r.state === 'CHARGING') mission = 'Using CHG-BAY';
+        return `
+          <div class="robot-row">
+            <div class="r-top"><span style="color:${r.color}">${r.name}</span><span>${r.bat}%</span></div>
+            <div class="r-sub"><span class="pill">${r.state}</span> ${mission}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    setInterval(() => {
+      stepLogic();
+      draw();
+    }, 540);
+    draw();
+    renderUI();
+  </script>
+</body>
+</html>
